@@ -4,6 +4,8 @@ CodeWhisper MenuBar Application - macOS 菜单栏应用（使用 rumps）
 
 import os
 import queue
+import signal
+import sys
 import threading
 import tempfile
 import subprocess
@@ -771,9 +773,18 @@ class CodeWhisperApp(rumps.App):
 
 def main():
     """主函数"""
+    # 设置信号处理器，支持 Ctrl+C 优雅退出
+    def signal_handler(signum, frame):
+        print("\n\n👋 收到退出信号，正在关闭应用...")
+        rumps.quit_application()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     app = CodeWhisperApp()
     print("🚀 应用启动中，请检查菜单栏")
     print("⚠️ 请注意术语字典库是否报错，报错会导致字典加载失败，术语命中失效")
+    print("💡 提示: 按 Ctrl+C 可以退出应用\n")
 
     app.run()
 

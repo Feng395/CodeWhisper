@@ -1,16 +1,17 @@
 """
 CodeWhisper FloatingBall Application - Windows悬浮球应用（使用 Pyside6）
 """
+import signal
 import sys
 import threading
 import tempfile
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
-from PySide6.QtCore import Qt, QPoint, Signal, Slot
+from PySide6.QtCore import Qt, QPoint, Signal, Slot, QTimer
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QApplication, QWidget, QToolTip
-from codewhisper.transcriber import CodeWhisper
+from CodeWhisper.transcriber import CodeWhisper
 
 
 class FloatingBall(QWidget):
@@ -32,6 +33,30 @@ class FloatingBall(QWidget):
         self.audio_data = []
         self.sample_rate = 16000
         self.stream = None
+        
+        # 检测音频设备
+        try:
+            print("\n🎤 音频设备信息:")
+            devices = sd.query_devices()
+            if isinstance(devices, list):
+                for i, dev in enumerate(devices):
+                    if dev['max_input_channels'] > 0:
+                        print(f"  输入设备 [{i}]: {dev['name']} (采样率: {dev['default_samplerate']}Hz)")
+            else:
+                print(f"  设备: {devices['name']}")
+            
+            default_input = sd.default.device[0]
+            default_output = sd.default.device[1]
+            print(f"  默认输入: {default_input}, 默认输出: {default_output}")
+            
+            if default_input == -1:
+                print("  ⚠️  未检测到默认输入设备，请检查:")
+                print("     1. 麦克风是否已连接")
+                print("     2. Windows 隐私设置 > 麦克风权限")
+                print("     3. 设备管理器中音频设备状态")
+        except Exception as e:
+            print(f"⚠️  音频设备检测失败: {e}")
+        
         try:
             self.whisper = CodeWhisper(model_name="small")
         except Exception as e:
@@ -97,7 +122,34 @@ class FloatingBall(QWidget):
 
     def _record_audio(self):
         try:
-            with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype="float32") as s:
+            # 尝试找到可用的输入设备
+            device = None
+            default_input = sd.default.device[0]
+            
+            if default_input != -1:
+                device = default_input
+            else:
+                # 尝试找到第一个有输入通道的设备
+                devices = sd.query_devices()
+                if isinstance(devices, list):
+                    for i, dev in enumerate(devices):
+                        if dev['max_input_channels'] > 0:
+                            device = i
+                            print(f"使用输入设备 [{i}]: {dev['name']}")
+                            break
+            
+            if device is None:
+                print("❌ 未找到可用的输入设备")
+                self.recording = False
+                self.update()
+                return
+            
+            with sd.InputStream(
+                device=device,
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="float32"
+            ) as s:
                 self.stream = s
                 while self.recording:
                     data, _ = s.read(1024)
@@ -107,6 +159,9 @@ class FloatingBall(QWidget):
             self._transcribe_audio()
         except Exception as e:
             print(f"录音错误: {e}")
+            print(f"提示: 请检查麦克风权限和设备连接")
+            self.recording = False
+            self.update()
 
     def _transcribe_audio(self):
         temp_audio_file = None
@@ -175,7 +230,24 @@ class FloatingBall(QWidget):
 
 def main():
     app = QApplication(sys.argv)
+    
+    # 设置信号处理器，支持 Ctrl+C 优雅退出
+    def signal_handler(signum, frame):
+        print("\n\n👋 收到退出信号，正在关闭应用...")
+        app.quit()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # 创建定时器让 Python 解释器定期运行，以便能响应信号
+    timer = QTimer()
+    timer.timeout.connect(lambda: None)
+    timer.start(500)
+    
     ball = FloatingBall()
+    
+    print("\n💡 提示: 按 Ctrl+C 可以退出应用\n")
+    
     sys.exit(app.exec())
 
 
