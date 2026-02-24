@@ -3608,6 +3608,250 @@
           ]
         }
       }
+    },
+    "mold": {
+      "name": "模具术语",
+      "description": "模具工业领域的专业术语",
+      "terms": {
+        "模具": {
+          "correct": "模具",
+          "description": "制造业中用于成型产品的工具",
+          "variants": [
+            {
+              "wrong": "磨具",
+              "description": "同音误识别，最常见"
+            },
+            {
+              "wrong": "摸具",
+              "description": "音韵误识别"
+            },
+            {
+              "wrong": "膜具",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "慢丝": {
+          "correct": "慢丝",
+          "description": "慢走丝线切割的简称",
+          "variants": [
+            {
+              "wrong": "慢思",
+              "description": "同音误识别"
+            },
+            {
+              "wrong": "慢斯",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "快丝": {
+          "correct": "快丝",
+          "description": "快走丝线切割的简称",
+          "variants": [
+            {
+              "wrong": "快思",
+              "description": "同音误识别"
+            },
+            {
+              "wrong": "快斯",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "中丝": {
+          "correct": "中丝",
+          "description": "中走丝线切割的简称",
+          "variants": [
+            {
+              "wrong": "中思",
+              "description": "同音误识别"
+            },
+            {
+              "wrong": "中斯",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "线切割": {
+          "correct": "线切割",
+          "description": "电火花线切割加工技术",
+          "variants": [
+            {
+              "wrong": "线切个",
+              "description": "音韵误识别"
+            },
+            {
+              "wrong": "线切格",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "慢丝割一刀": {
+          "correct": "慢丝割一刀",
+          "description": "慢走丝线切割加工的第一刀切割",
+          "variants": [
+            {
+              "wrong": "慢丝割一道",
+              "description": "同音误识别"
+            },
+            {
+              "wrong": "慢丝割1刀",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "慢思割一刀",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "慢丝割一修一": {
+          "correct": "慢丝割一修一",
+          "description": "慢走丝线切割加工的第一次修刀",
+          "variants": [
+            {
+              "wrong": "慢丝割一修1",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "慢思割一修一",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "慢丝割一修二": {
+          "correct": "慢丝割一修二",
+          "description": "慢走丝线切割加工的第二次修刀",
+          "variants": [
+            {
+              "wrong": "慢丝割一修2",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "慢思割一修二",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "慢丝割一修三": {
+          "correct": "慢丝割一修三",
+          "description": "慢走丝线切割加工的第三次修刀",
+          "variants": [
+            {
+              "wrong": "慢丝割一修3",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "慢思割一修三",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "快丝割一刀": {
+          "correct": "快丝割一刀",
+          "description": "快走丝线切割加工的第一刀切割",
+          "variants": [
+            {
+              "wrong": "快丝割一道",
+              "description": "同音误识别"
+            },
+            {
+              "wrong": "快丝割1刀",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "快思割一刀",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "中丝割一修一": {
+          "correct": "中丝割一修一",
+          "description": "中走丝线切割加工的第一次修刀",
+          "variants": [
+            {
+              "wrong": "中丝割一修1",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "中思割一修一",
+              "description": "音韵误识别"
+            }
+          ]
+        },
+        "一修一": {
+          "correct": "一修一",
+          "description": "第一次修刀",
+          "variants": [
+            {
+              "wrong": "一修1",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1修一",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1修1",
+              "description": "数字形式"
+            }
+          ]
+        },
+        "一修二": {
+          "correct": "一修二",
+          "description": "第二次修刀",
+          "variants": [
+            {
+              "wrong": "一修2",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1修二",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1修2",
+              "description": "数字形式"
+            }
+          ]
+        },
+        "一修三": {
+          "correct": "一修三",
+          "description": "第三次修刀",
+          "variants": [
+            {
+              "wrong": "一修3",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1修三",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1修3",
+              "description": "数字形式"
+            }
+          ]
+        },
+        "一刀": {
+          "correct": "一刀",
+          "description": "第一刀",
+          "variants": [
+            {
+              "wrong": "一道",
+              "description": "同音误识别"
+            },
+            {
+              "wrong": "1刀",
+              "description": "数字形式"
+            },
+            {
+              "wrong": "1道",
+              "description": "数字+同音"
+            }
+          ]
+        }
+      }
     }
   }
 }
