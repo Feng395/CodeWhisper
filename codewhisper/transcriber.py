@@ -316,7 +316,7 @@ class CodeWhisper:
         # 替换术语
         if fix_programmer_terms:
             if verbose:
-                debug("🛠 修正为开发者术语")
+                debug("🛠 修正为工业模具领域术语")
 
             # 只修正正文文本一次，避免重复修正
             result["text"] = self.dict_manager.fix_text(result["text"], accumulate=False)

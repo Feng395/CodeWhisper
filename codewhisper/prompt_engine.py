@@ -56,7 +56,7 @@ class PromptEngine:
             warn(f"❌ 加载配置文件失败: {e}")
             # 返回默认配置
             return {
-                "prompt_prefix": "计算机行业从业者：",
+                "prompt_prefix": "工业模具行业从业者：",
                 "user_dict_path": "config/user_dict.json",
                 "base_dict_path": "config/base_dict.json",
                 "max_user_terms": 20,
