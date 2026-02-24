@@ -2,8 +2,14 @@
 CodeWhisper - 为中文社区开发者设计的语音转文字工具
 """
 
+import os
 import platform
 import sys
+
+# 添加项目根目录到 Python 路径
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 
 def main() -> None:

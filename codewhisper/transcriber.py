@@ -41,7 +41,10 @@ class CodeWhisper:
         self.prompt_engine = PromptEngine()
 
         # 使用新的 PromptEngine 构建提示词
+        # 构建初始提示词喂给 Whisper，减少识别错误
         self.programmer_prompt = self.prompt_engine.build_prompt()
+        # 例如: "计算机行业从业者：提测、联调、排期、Vue、React、数据库..."
+
         info(f"💡 当前提示词: {self.programmer_prompt}")
 
         info("✅ CodeWhisper 初始化完成")

@@ -15,9 +15,9 @@ import sounddevice as sd
 import soundfile as sf
 import numpy as np
 
-from codewhisper.transcriber import CodeWhisper
-from codewhisper.history_manager import HistoryManager
-from codewhisper.console import preview_text
+from CodeWhisper.transcriber import CodeWhisper
+from CodeWhisper.history_manager import HistoryManager
+from CodeWhisper.console import preview_text
 
 
 class CodeWhisperApp(rumps.App):
