@@ -12,10 +12,12 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import json
+import base64
 
 # 添加项目根目录到路径
 PROJECT_ROOT = Path(__file__).parent
@@ -281,6 +283,226 @@ async def get_stats():
         "dict_stats": whisper.get_dict_stats(),
         "dict_categories": whisper.get_dict_categories()
     }
+
+
+@app.post("/api/transcribe/stream")
+async def transcribe_stream(
+    audio_data: str = Form(..., description="Base64 编码的音频数据"),
+    model: str = Form("small", description="模型大小"),
+    language: str = Form("zh", description="语言代码"),
+    fix_terms: bool = Form(True, description="是否修正术语"),
+    format: str = Form("wav", description="音频格式")
+):
+    """
+    转录 Base64 编码的音频流
+    
+    参数:
+    - audio_data: Base64 编码的音频数据（必需）
+    - model: 模型大小（默认：small）
+    - language: 语言代码（默认：zh）
+    - fix_terms: 是否修正术语（默认：true）
+    - format: 音频格式（默认：wav）
+    
+    返回:
+    - text: 转录文本
+    - corrections: 术语修正详情
+    """
+    temp_file = None
+    
+    try:
+        # 解码 Base64 音频数据
+        audio_bytes = base64.b64decode(audio_data)
+        
+        # 保存到临时文件
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{format}") as tmp:
+            temp_file = tmp.name
+            tmp.write(audio_bytes)
+        
+        # 获取 Whisper 实例
+        whisper = get_whisper_instance(model)
+        
+        # 转录
+        result = whisper.transcribe(
+            temp_file,
+            language=language,
+            fix_programmer_terms=fix_terms
+        )
+        
+        # 构建响应
+        response = {
+            "success": True,
+            "text": result.get("text", ""),
+            "language": result.get("language", language)
+        }
+        
+        if fix_terms:
+            corrections = whisper.dict_manager.get_corrections()
+            stats = whisper.get_dict_stats()
+            
+            response["corrections"] = {
+                "count": stats.get("replacements_made", 0),
+                "details": corrections
+            }
+        
+        return JSONResponse(content=response)
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"转录失败: {str(e)}")
+    
+    finally:
+        # 清理临时文件
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except:
+                pass
+
+
+@app.websocket("/ws/transcribe")
+async def websocket_transcribe(websocket: WebSocket):
+    """
+    WebSocket 实时转录接口
+    
+    客户端发送 JSON 消息：
+    {
+        "action": "start",  // 开始会话
+        "model": "small",
+        "language": "zh"
+    }
+    
+    {
+        "action": "audio",  // 发送音频数据
+        "data": "base64_encoded_audio"
+    }
+    
+    {
+        "action": "end"  // 结束会话并转录
+    }
+    
+    服务器响应：
+    {
+        "type": "status",
+        "message": "会话已开始"
+    }
+    
+    {
+        "type": "result",
+        "text": "转录结果",
+        "corrections": {...}
+    }
+    """
+    await websocket.accept()
+    
+    # 会话状态
+    session = {
+        "model": "small",
+        "language": "zh",
+        "audio_chunks": [],
+        "temp_file": None
+    }
+    
+    try:
+        while True:
+            # 接收消息
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            action = message.get("action")
+            
+            if action == "start":
+                # 开始新会话
+                session["model"] = message.get("model", "small")
+                session["language"] = message.get("language", "zh")
+                session["audio_chunks"] = []
+                
+                await websocket.send_json({
+                    "type": "status",
+                    "message": f"会话已开始，模型: {session['model']}"
+                })
+            
+            elif action == "audio":
+                # 接收音频数据
+                audio_data = message.get("data")
+                if audio_data:
+                    session["audio_chunks"].append(audio_data)
+                    
+                    await websocket.send_json({
+                        "type": "status",
+                        "message": f"已接收音频块 {len(session['audio_chunks'])}"
+                    })
+            
+            elif action == "end":
+                # 结束会话并转录
+                if not session["audio_chunks"]:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "没有音频数据"
+                    })
+                    continue
+                
+                try:
+                    # 合并所有音频块
+                    combined_audio = b"".join([
+                        base64.b64decode(chunk)
+                        for chunk in session["audio_chunks"]
+                    ])
+                    
+                    # 保存到临时文件
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                        session["temp_file"] = tmp.name
+                        tmp.write(combined_audio)
+                    
+                    # 转录
+                    whisper = get_whisper_instance(session["model"])
+                    result = whisper.transcribe(
+                        session["temp_file"],
+                        language=session["language"],
+                        fix_programmer_terms=True
+                    )
+                    
+                    # 发送结果
+                    corrections = whisper.dict_manager.get_corrections()
+                    stats = whisper.get_dict_stats()
+                    
+                    await websocket.send_json({
+                        "type": "result",
+                        "text": result.get("text", ""),
+                        "language": result.get("language", session["language"]),
+                        "corrections": {
+                            "count": stats.get("replacements_made", 0),
+                            "details": corrections
+                        }
+                    })
+                    
+                    # 清理
+                    session["audio_chunks"] = []
+                    if session["temp_file"] and os.path.exists(session["temp_file"]):
+                        os.remove(session["temp_file"])
+                        session["temp_file"] = None
+                
+                except Exception as e:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"转录失败: {str(e)}"
+                    })
+            
+            else:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"未知操作: {action}"
+                })
+    
+    except WebSocketDisconnect:
+        print("WebSocket 连接已断开")
+    except Exception as e:
+        print(f"WebSocket 错误: {e}")
+    finally:
+        # 清理临时文件
+        if session.get("temp_file") and os.path.exists(session["temp_file"]):
+            try:
+                os.remove(session["temp_file"])
+            except:
+                pass
 
 
 def main():

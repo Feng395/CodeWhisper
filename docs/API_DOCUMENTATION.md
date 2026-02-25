@@ -19,7 +19,7 @@ pip install fastapi uvicorn python-multipart requests
 python api_server.py
 
 # 指定端口
-python api_server.py --port 8080
+python api_server.py --port 8888
 
 # 开发模式（自动重载）
 python api_server.py --reload
