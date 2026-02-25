@@ -10,3 +10,9 @@ hanziconv
 rumps; platform_system == "Darwin"
 pyobjc-framework-Quartz; platform_system == "Darwin"
 PySide6; platform_system == "Windows"
+
+# API Server dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+requests
