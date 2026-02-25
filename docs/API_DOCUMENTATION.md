@@ -253,6 +253,164 @@ curl -X POST "http://localhost:8000/api/transcribe/url" \
 
 ---
 
+## 实时语音输入
+
+CodeWhisper API 支持直接输入语音数据，无需先保存为文件。
+
+### 1. Base64 流式接口
+
+**POST /api/transcribe/stream**
+
+上传 Base64 编码的音频数据进行转录。
+
+**请求参数：**
+
+| 参数 | 类型 | 必需 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| audio_data | string | 是 | - | Base64 编码的音频数据 |
+| model | string | 否 | small | 模型大小 |
+| language | string | 否 | zh | 语言代码 |
+| fix_terms | boolean | 否 | true | 是否修正术语 |
+| format | string | 否 | wav | 音频格式 |
+
+**请求示例：**
+```bash
+curl -X POST "http://localhost:8000/api/transcribe/stream" \
+  -F "audio_data=$(base64 -w0 audio.wav)" \
+  -F "model=small" \
+  -F "language=zh"
+```
+
+**Python 示例：**
+```python
+import requests
+import base64
+
+with open("audio.wav", "rb") as f:
+    audio_base64 = base64.b64encode(f.read()).decode('utf-8')
+
+response = requests.post(
+    "http://localhost:8000/api/transcribe/stream",
+    data={
+        "audio_data": audio_base64,
+        "model": "small",
+        "language": "zh"
+    }
+)
+
+result = response.json()
+print(result["text"])
+```
+
+### 2. WebSocket 接口
+
+**WS /ws/transcribe**
+
+使用 WebSocket 进行实时双向通信。
+
+**连接流程：**
+
+1. 建立 WebSocket 连接
+2. 发送 `start` 消息开始会话
+3. 发送 `audio` 消息传输音频数据
+4. 发送 `end` 消息结束会话
+5. 接收转录结果
+
+**消息格式：**
+
+```json
+// 开始会话
+{
+  "action": "start",
+  "model": "small",
+  "language": "zh"
+}
+
+// 发送音频
+{
+  "action": "audio",
+  "data": "base64_encoded_audio"
+}
+
+// 结束会话
+{
+  "action": "end"
+}
+```
+
+**服务器响应：**
+```json
+// 状态消息
+{
+  "type": "status",
+  "message": "会话已开始"
+}
+
+// 转录结果
+{
+  "type": "result",
+  "text": "转录结果",
+  "language": "zh",
+  "corrections": {
+    "count": 2,
+    "details": [...]
+  }
+}
+```
+
+**Python 示例：**
+```python
+import asyncio
+import websockets
+import json
+import base64
+
+async def transcribe():
+    async with websockets.connect("ws://localhost:8000/ws/transcribe") as ws:
+        # 开始会话
+        await ws.send(json.dumps({"action": "start", "model": "small"}))
+        
+        # 发送音频数据
+        with open("audio.wav", "rb") as f:
+            while chunk := f.read(4096):
+                await ws.send(json.dumps({
+                    "action": "audio",
+                    "data": base64.b64encode(chunk).decode()
+                }))
+        
+        # 结束并获取结果
+        await ws.send(json.dumps({"action": "end"}))
+        result = json.loads(await ws.recv())
+        
+        if result["type"] == "result":
+            print(result["text"])
+
+asyncio.run(transcribe())
+```
+
+### 3. 网页录音示例
+
+我们提供了完整的 HTML 网页示例：`examples/web_recorder.html`
+
+可以直接在浏览器中录音并转录，无需编写代码！
+
+**功能：**
+- 🎤 浏览器内录音
+- 🚀 实时转录
+- 🔧 术语自动修正
+- 📊 修正详情显示
+- ⚙️ 模型和语言选择
+
+### 4. 三种方式对比
+
+| 方式 | 延迟 | 复杂度 | 适用场景 |
+|------|------|--------|----------|
+| 文件上传 | 高 | 低 | 已有音频文件 |
+| Base64 流 | 中 | 低 | 网页应用、简单场景 |
+| WebSocket | 低 | 中 | 实时对话、长时间录音 |
+
+---
+
 ## 错误处理
 
 ### 错误响应格式

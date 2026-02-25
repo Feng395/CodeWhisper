@@ -506,32 +506,187 @@ async def websocket_transcribe(websocket: WebSocket):
 
 
 def main():
-    """启动 API 服务器"""
+    """
+    启动 CodeWhisper API 服务器
+    
+    支持的命令行参数：
+    =================
+    
+    1. --host
+       - 说明：服务器绑定的 IP 地址
+       - 默认值：0.0.0.0（监听所有网络接口）
+       - 可选值：
+         * 0.0.0.0 - 监听所有网卡，允许外部访问
+         * 127.0.0.1 - 仅本地访问
+         * 192.168.x.x - 局域网特定 IP
+       - 使用示例：
+         # 允许外部访问
+         python api_server.py --host 0.0.0.0
+         
+         # 仅本地访问
+         python api_server.py --host 127.0.0.1
+         
+         # 指定局域网 IP
+         python api_server.py --host 192.168.1.100
+    
+    2. --port
+       - 说明：服务器监听的端口号
+       - 默认值：8000
+       - 可选值：1-65535 之间的任意端口
+       - 使用示例：
+         # 使用默认端口
+         python api_server.py
+         
+         # 指定端口
+         python api_server.py --port 8080
+         
+         # 使用 80 端口（HTTP 默认端口）
+         sudo python api_server.py --port 80
+         
+         # 使用 443 端口（HTTPS 默认端口，需要 SSL 证书）
+         sudo python api_server.py --port 443
+       - 注意事项：
+         * 端口 < 1024 需要管理员权限
+         * 确保端口未被占用
+         * 防火墙需要允许该端口
+    
+    3. --reload
+       - 说明：启用开发模式，代码修改后自动重载
+       - 默认值：False（禁用）
+       - 类型：布尔开关（指定即启用）
+       - 使用示例：
+         # 启用自动重载（开发环境）
+         python api_server.py --reload
+         
+         # 禁用自动重载（生产环境）
+         python api_server.py
+       - 适用场景：
+         * 开发调试时：启用，方便实时测试修改
+         * 生产环境：禁用，避免不必要的性能开销
+       - 注意事项：
+         * 自动重载会增加内存占用
+         * 可能导致意外的连接中断
+         * 生产环境建议关闭
+    
+    4. --model
+       - 说明：预加载的 Whisper 模型
+       - 默认值：small
+       - 可选值：tiny, base, small, medium, large
+       - 模型对比：
+         | 模型   | 大小   | 速度   | 准确率 | 显存占用  |
+         |--------|--------|--------|--------|-----------|
+         | tiny   | ~39 MB | 最快   | 较低   | ~1 GB     |
+         | base   | ~74 MB | 很快   | 一般   | ~1-2 GB   |
+         | small  | ~244 MB| 较快   | 较高   | ~2-4 GB   |
+         | medium | ~769 MB| 中等   | 高     | ~4-8 GB   |
+         | large  | ~1550 MB| 较慢   | 最高   | ~8-16 GB  |
+       - 使用示例：
+         # 使用小模型（最快）
+         python api_server.py --model tiny
+         
+         # 使用中等模型（平衡）
+         python api_server.py --model medium
+         
+         # 使用大模型（最准确）
+         python api_server.py --model large
+         
+         # 不预加载模型（首次请求时加载）
+         python api_server.py
+       - 选择建议：
+         * 实时应用：tiny 或 base
+         * 一般应用：small（推荐）
+         * 高准确率：medium 或 large
+         * 根据硬件配置选择
+       - 注意事项：
+         * 大模型需要更多显存和内存
+         * 首次加载需要较长时间
+         * 预加载可以减少首次请求延迟
+    
+    完整使用示例：
+    ==============
+    
+    # 开发环境（自动重载、本地访问）
+    python api_server.py --reload --host 127.0.0.1 --port 8000
+    
+    # 生产环境（无重载、外部访问）
+    python api_server.py --host 0.0.0.0 --port 8000 --model medium
+    
+    # 高性能服务器（使用大模型）
+    python api_server.py --host 0.0.0.0 --port 8000 --model large
+    
+    # 资源受限环境（使用小模型）
+    python api_server.py --host 0.0.0.0 --port 8000 --model tiny
+
+    python api_server.py --host 192.168.1.143 --port 8888 --model medium
+    
+    # 查看帮助信息
+    python api_server.py --help
+    """
     import argparse
     
-    parser = argparse.ArgumentParser(description="CodeWhisper API Server")
-    parser.add_argument("--host", default="0.0.0.0", help="服务器地址")
-    parser.add_argument("--port", type=int, default=8000, help="服务器端口")
-    parser.add_argument("--reload", action="store_true", help="开发模式（自动重载）")
-    parser.add_argument("--model", default="small", help="预加载的模型")
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="CodeWhisper API Server - 语音转文字 API 服务",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     
+    # 添加命令行参数
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="服务器绑定的 IP 地址 (默认: 0.0.0.0，监听所有网卡)"
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="服务器监听的端口号 (默认: 8000)"
+    )
+    
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="启用开发模式，代码修改后自动重载 (默认: 禁用)"
+    )
+    
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="small",
+        choices=["tiny", "base", "small", "medium", "large"],
+        help="预加载的 Whisper 模型大小 (默认: small)"
+    )
+    
+    # 解析命令行参数
     args = parser.parse_args()
     
-    # 预加载模型
+    # 预加载指定模型
     print(f"🚀 启动 CodeWhisper API Server")
     print(f"📦 预加载模型: {args.model}")
-    get_whisper_instance(args.model)
+    whisper = get_whisper_instance(args.model)
     
-    print(f"🌐 服务器地址: http://{args.host}:{args.port}")
-    print(f"📖 API 文档: http://{args.host}:{args.port}/docs")
-    print(f"🔧 交互式文档: http://{args.host}:{args.port}/redoc")
+    # 显示服务器信息
+    print(f"\n🌐 服务器配置:")
+    print(f"   地址: http://{args.host}:{args.port}")
+    print(f"   自动重载: {'启用' if args.reload else '禁用'}")
+    print(f"   模型: {args.model}")
+    
+    print(f"\n📖 访问地址:")
+    print(f"   API 文档: http://{args.host}:{args.port}/docs")
+    print(f"   交互式文档: http://{args.host}:{args.port}/redoc")
+    print(f"   健康检查: http://{args.host}:{args.port}/api/health")
+    
+    print(f"\n💡 提示: 按 Ctrl+C 停止服务器")
     
     # 启动服务器
     uvicorn.run(
         "api_server:app",
         host=args.host,
         port=args.port,
-        reload=args.reload
+        reload=args.reload,
+        log_level="info"
     )
 
 

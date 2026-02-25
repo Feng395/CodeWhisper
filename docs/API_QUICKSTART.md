@@ -128,6 +128,188 @@ for correction in result['corrections']['details']:
     print(f"  {correction['wrong']} → {correction['correct']}")
 ```
 
+## 实时语音输入
+
+CodeWhisper API 支持直接输入语音数据，无需先保存为文件！
+
+### 1. Base64 流式接口 ⭐ 推荐用于简单场景
+
+**POST /api/transcribe/stream**
+
+直接发送 Base64 编码的音频数据。
+
+**Python 示例：**
+```python
+import requests
+import base64
+
+# 读取音频数据
+with open("audio.wav", "rb") as f:
+    audio_bytes = f.read()
+
+# 编码为 Base64
+audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+# 发送请求
+response = requests.post(
+    "http://localhost:8000/api/transcribe/stream",
+    data={
+        "audio_data": audio_base64,
+        "model": "small",
+        "language": "zh"
+    }
+)
+
+result = response.json()
+print(result["text"])
+```
+
+**JavaScript 示例：**
+```javascript
+// 从麦克风录音
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(stream => {
+    const mediaRecorder = new MediaRecorder(stream);
+    const audioChunks = [];
+    
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+    
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const reader = new FileReader();
+      
+      reader.onloadend = async () => {
+        const base64Audio = reader.result.split(',')[1];
+        
+        const formData = new FormData();
+        formData.append('audio_data', base64Audio);
+        formData.append('model', 'small');
+        
+        const response = await fetch('http://localhost:8000/api/transcribe/stream', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        console.log(result.text);
+      };
+      
+      reader.readAsDataURL(audioBlob);
+    };
+    
+    mediaRecorder.start();
+    setTimeout(() => mediaRecorder.stop(), 5000);
+  });
+```
+
+**特点：**
+- ✅ 简单易用
+- ✅ 一次性转录
+- ✅ 兼容性好
+- ✅ 适合网页应用
+
+### 2. WebSocket 接口 ⭐⭐ 推荐用于实时场景
+
+**WS /ws/transcribe**
+
+使用 WebSocket 进行双向通信，支持分块发送音频数据。
+
+**Python 示例：**
+```python
+import asyncio
+import websockets
+import json
+import base64
+
+async def transcribe_realtime():
+    uri = "ws://localhost:8000/ws/transcribe"
+    
+    async with websockets.connect(uri) as websocket:
+        # 开始会话
+        await websocket.send(json.dumps({
+            "action": "start",
+            "model": "small",
+            "language": "zh"
+        }))
+        
+        response = await websocket.recv()
+        print(json.loads(response)['message'])
+        
+        # 发送音频数据（分块）
+        with open("audio.wav", "rb") as f:
+            while True:
+                chunk = f.read(4096)
+                if not chunk:
+                    break
+                
+                encoded = base64.b64encode(chunk).decode('utf-8')
+                await websocket.send(json.dumps({
+                    "action": "audio",
+                    "data": encoded
+                }))
+                
+                response = await websocket.recv()
+                print(json.loads(response)['message'])
+        
+        # 结束并获取结果
+        await websocket.send(json.dumps({
+            "action": "end"
+        }))
+        
+        response = await websocket.recv()
+        result = json.loads(response)
+        print(f"转录结果: {result['text']}")
+
+asyncio.run(transcribe_realtime())
+```
+
+**协议：**
+```json
+// 客户端发送
+{"action": "start", "model": "small", "language": "zh"}
+{"action": "audio", "data": "base64_encoded_audio"}
+{"action": "end"}
+
+// 服务器响应
+{"type": "status", "message": "会话已开始"}
+{"type": "result", "text": "转录结果", "corrections": {...}}
+```
+
+**特点：**
+- ✅ 真正的实时通信
+- ✅ 可以边录边发
+- ✅ 支持长时间录音
+- ✅ 低延迟
+- ✅ 双向通信
+
+### 3. 网页录音示例
+
+我们提供了完整的 HTML 网页示例！
+
+**使用方法：**
+1. 启动服务器：`python api_server.py`
+2. 在浏览器中打开：`examples/web_recorder.html`
+3. 点击"开始录音" → 说话 → 点击"停止录音"
+4. 查看转录结果！
+
+**功能特性：**
+- 🎤 浏览器内录音
+- 🚀 实时转录
+- 🔧 术语自动修正
+- 📊 修正详情显示
+- ⚙️ 模型和语言选择
+- 🎨 美观的界面
+
+### 4. 三种方式对比
+
+| 方式 | 延迟 | 复杂度 | 适用场景 |
+|------|------|--------|----------|
+| 文件上传 | 高 | 低 | 已有音频文件 |
+| Base64 流 | 中 | 低 | 网页应用、简单场景 |
+| WebSocket | 低 | 中 | 实时对话、长时间录音 |
+
 ## 主要 API 端点
 
 ### 1. 转录音频文件
