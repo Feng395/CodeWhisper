@@ -617,7 +617,7 @@ def main():
     # 资源受限环境（使用小模型）
     python api_server.py --host 0.0.0.0 --port 8000 --model tiny
 
-    python api_server.py --host 192.168.1.143 --port 8888 --model medium
+    python api_server.py --host 192.168.1.143 --port 8888 --model small
     
     # 查看帮助信息
     python api_server.py --help
